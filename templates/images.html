@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Gallery</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-gap: 10px;
+            margin-top: 20px;
+        }
+        .image-container {
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer; /* Add cursor pointer to indicate clickable */
+        }
+        .download-all {
+            margin-top: 20px;
+        }
+        .crawl-form {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .crawl-form input[type="text"] {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .please-wait {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4 mb-4">Image Gallery</h1>
+
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item {% if img_type == 'original' %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('show_images', host=host, img_type='original') }}">Original</a>
+                    </li>
+                    <li class="nav-item {% if img_type == 'grayscale' %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('show_images', host=host, img_type='grayscale') }}">Grayscale</a>
+                    </li>
+                    <li class="nav-item {% if img_type == 'edge' %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('show_images', host=host, img_type='edge') }}">Edge Detection</a>
+                    </li>
+                    <li class="nav-item {% if img_type == 'edge' %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('show_images', host=host, img_type='bounding') }}">Bounding Box</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Gallery -->
+        <div class="gallery" id="gallery">
+            {% if images %}
+                {% for image in images %}
+                <div class="image-container">
+                    <!-- Add onclick event to compareImages function -->
+                    <img src="{{ url_for('show_image', host=host, image=image, img_type=img_type) }}" alt="{{ image }}" onclick="compareImages('{{ image }}')">
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="please-wait">
+                    <p>No images yet. Please wait while crawling...</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Buttons Container -->
+        <div class="d-flex">
+            <!-- Download All Button -->
+            <a href="{{ url_for('compress_image', host=host) }}" class="btn btn-primary download-all">Download All</a>
+
+            <!-- Refresh Button -->
+            <a class="btn btn-secondary download-all" href="{{ url_for('refresh', host=host) }}">Refresh</a>
+        </div>
+
+        <!-- Crawl Form -->
+        <form class="crawl-form" action="{{ url_for('crawl') }}" method="get">
+            <input type="text" name="url" class="form-control" placeholder="Enter URL to crawl">
+            <button type="submit" class="btn btn-success">Crawl Again</button>
+        </form>
+    </div>
+
+    <!-- Socket.io JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        const url = new URL(window.location.href);
+        const img_type = url.searchParams.get('img_type');
+        socket.on('file_changed', function(data) {
+            if (data.host === '{{ host }}') {
+                const gallery = document.getElementById('gallery');
+                const existingImages = gallery.querySelectorAll(`img[alt="${data.file}"]`);
+                
+                // Remove any existing images with the same name (including broken ones)
+                existingImages.forEach(img => {
+                    img.parentElement.remove();
+                });
+
+                // Create new image container with error handling
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-container';
+
+                const img = document.createElement('img');
+                img.src = `/images/${data.host}/${data.file}?img_type=${img_type}&t=${Date.now()}`;
+                img.alt = data.file;
+                img.className = 'img-fluid';
+                
+                // Add cache-busting parameter and error handling
+                img.onerror = function() {
+                    this.parentElement.remove();
+                    console.error('Failed to load image:', this.src);
+                };
+
+                // Add click handler
+                img.onclick = function() {
+                    compareImages(data.file);
+                };
+
+                imgContainer.appendChild(img);
+                
+                // If gallery has "please wait" message, replace it
+                if (gallery.querySelector('.please-wait')) {
+                    gallery.innerHTML = '';
+                }
+                
+                gallery.appendChild(imgContainer);
+            }
+        });
+
+        function compareImages(image) {
+            var originalImage = document.createElement('img');
+            originalImage.src = `/images/{{ host }}/${image}?img_type=original`;
+
+            var grayscaleImage = document.createElement('img');
+            grayscaleImage.src = `/images/{{ host }}/${image}?img_type=grayscale`;
+
+            var edgeImage = document.createElement('img');
+            edgeImage.src = `/images/{{ host }}/${image}?img_type=edge`;
+
+            var boundingImage = document.createElement('img');
+            boundingImage.src = `/images/{{ host }}/${image}?img_type=bounding`;
+
+
+            var comparisonWindow = window.open('', 'Image Comparison', 'width=1200,height=600');
+            comparisonWindow.document.write(`<h2>Image Comparison for ${image}</h2>`);
+            comparisonWindow.document.write('<div style="display:flex; justify-content: space-around;">');
+            comparisonWindow.document.write('<div style="flex: 1; text-align: center;">');
+            comparisonWindow.document.write('<h4>Original</h4>');
+            comparisonWindow.document.write(originalImage.outerHTML);
+            comparisonWindow.document.write('</div>');
+            comparisonWindow.document.write('<div style="flex: 1; text-align: center;">');
+            comparisonWindow.document.write('<h4>Grayscale</h4>');
+            comparisonWindow.document.write(grayscaleImage.outerHTML);
+            comparisonWindow.document.write('</div>');
+            comparisonWindow.document.write('<div style="flex: 1; text-align: center;">');
+            comparisonWindow.document.write('<h4>Edge Detection</h4>');
+            comparisonWindow.document.write(edgeImage.outerHTML);
+            comparisonWindow.document.write('</div>');
+            comparisonWindow.document.write('</div>');
+            comparisonWindow.document.write('<div style="flex: 1; text-align: center;">');
+            comparisonWindow.document.write('<h4>Bounding Box</h4>');
+            comparisonWindow.document.write(boundingImage.outerHTML);
+            comparisonWindow.document.write('</div>');
+            comparisonWindow.document.close();
+        }
+    </script>
+</body>
+</html>

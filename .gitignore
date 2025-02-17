@@ -1,0 +1,4 @@
+data/
+files/
+gender-detection-and-classification-image-dataset.pth
+__pycache__/
