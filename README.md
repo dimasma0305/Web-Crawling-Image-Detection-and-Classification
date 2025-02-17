@@ -1,6 +1,6 @@
 # Web Crawling Image Detection and Classification
 
-A web crawling program that fetches image sources using Playwright. This tool is designed for dynamic websites where the DOM is rendered with JavaScript. It can extract images rendered via CSS and then process them using CNN for image classification and RCNN for object detection.
+A web crawling program that fetches image sources using Playwright. This tool is designed for dynamic websites where the DOM is rendered with JavaScript. It can extract images rendered via CSS or dynamic image element and then process them using CNN for image classification and RCNN for object detection.
 
 ## Installation
 
