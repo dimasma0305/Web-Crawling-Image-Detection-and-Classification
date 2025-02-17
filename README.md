@@ -7,7 +7,7 @@ A web crawling program that fetches image sources using Playwright. This tool is
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/dimasma0305/Web-Crawling-Image-Detection-and-Classification.git
-   cd your-repo-name
+   cd Web-Crawling-Image-Detection-and-Classification
    ```
 
 2. **Install Python dependencies:**
